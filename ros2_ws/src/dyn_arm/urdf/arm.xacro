@@ -1,0 +1,117 @@
+<?xml version="1.0"?>
+<!-- xacro: supports variables (${name}) and math, including pi.
+     Angles: 180 deg = ${pi}, 90 deg = ${pi/2}. <origin xyz> is in METERS.
+     Meshes are referenced by package:// so the model is portable (no absolute paths). -->
+<robot name="dyn_arm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:property name="meshes"   value="package://dyn_arm/meshes"/>
+  <xacro:property name="link_len" value="0.14"/>   <!-- axis-to-axis member length, meters -->
+
+  <material name="pla"><color rgba="0.10 0.10 0.11 1"/></material>
+  <material name="motor"><color rgba="0.15 0.32 0.60 1"/></material>
+
+  <!-- ============ BASE: anchor bracket + elbow motor ============ -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0.01675 0" rpy="${pi/2} 0 ${pi/2}"/>
+      <geometry><mesh filename="${meshes}/anchor_bracket.stl"/></geometry>
+      <material name="pla"/>
+    </visual>
+    <visual>
+      <origin xyz="0 -0.01675 0" rpy="${pi/2} 0 -${pi/2}"/>
+      <geometry><mesh filename="${meshes}/anchor_bracket.stl"/></geometry>
+      <material name="pla"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0 0.04475" rpy="${pi} 0 ${pi/2}"/>             <!-- elbow motor (XM540), flipped 180 -->
+      <geometry><mesh filename="${meshes}/xm540.stl"/></geometry>
+      <material name="motor"/>
+    </visual>
+  </link>
+
+  <joint name="elbow" type="revolute">
+    <parent link="base_link"/>
+    <child link="forearm_link"/>
+    <origin xyz="0 0 0.04475" rpy="${pi/2} 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-${pi/2}" upper="${pi/2}" effort="10.6" velocity="3"/>
+  </joint>
+
+  <!-- ============ FOREARM: J3J2 member ============ -->
+  <link name="forearm_link">
+    <visual>
+      <origin xyz="0.0245 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="${meshes}/j3j2_member.stl"/></geometry>
+      <material name="pla"/>
+    </visual>
+    <visual>
+      <origin xyz="0.0245 0 0" rpy="${pi} 0 0"/>
+      <geometry><mesh filename="${meshes}/j3j2_member_mirrored.stl"/></geometry>
+      <material name="pla"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0.14 0" rpy="0 ${pi/2} -${pi/2}"/>             <!-- wrist motor (XM430) -->
+      <geometry><mesh filename="${meshes}/xm430.stl"/></geometry>
+      <material name="motor"/>
+    </visual>
+  </link>
+
+  <joint name="wrist" type="revolute">
+    <parent link="forearm_link"/>
+    <child link="hand_link"/>
+    <origin xyz="0 ${link_len} 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="${-3*pi/4}" upper="${3*pi/4}" effort="3" velocity="3"/>
+  </joint>
+
+  <!-- ============ HAND: J2J1 member + wrist motor ============ -->
+  <link name="hand_link">
+    <visual>
+      <origin xyz="0.019 0 0" rpy="0 0 0"/>
+      <geometry><mesh filename="${meshes}/j2j1_member.stl"/></geometry>
+      <material name="pla"/>
+    </visual>
+    <visual>
+      <origin xyz="0.019 0 0" rpy="${pi} 0 0"/>
+      <geometry><mesh filename="${meshes}/j2j1_member_mirrored.stl"/></geometry>
+      <material name="pla"/>
+    </visual>
+    <visual>
+      <origin xyz="0 0.14 0" rpy="0 ${pi/2} -${pi/2}"/>
+      <geometry><mesh filename="${meshes}/xm430.stl"/></geometry>
+      <material name="motor"/>
+    </visual>
+  </link>
+
+  <joint name="gripper_mount" type="fixed">
+    <parent link="hand_link"/>
+    <child link="gripper_base_link"/>
+    <origin xyz="0 ${link_len} 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============ GRIPPER BASE (fixed) ============ -->
+  <link name="gripper_base_link">
+    <visual>
+      <origin xyz="0.0085 0.01125 0" rpy="${pi/2} -${pi} ${pi}"/>
+      <geometry><mesh filename="${meshes}/gripper_base.stl"/></geometry>
+      <material name="pla"/>
+    </visual>
+  </link>
+
+  <!-- ============ GRIPPER JAW (moves with the pinch) ============ -->
+  <joint name="gripper" type="revolute">
+    <parent link="gripper_base_link"/>
+    <child link="jaw_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.2" upper="0.425" effort="1" velocity="3"/>   <!-- 0 = closed, ~0.7 rad = open -->
+  </joint>
+  <link name="jaw_link">
+    <visual>
+      <origin xyz="0.019 0 0" rpy="-${pi/2} 0 ${pi}"/>
+      <geometry><mesh filename="${meshes}/gripper_actuator.stl"/></geometry>
+      <material name="pla"/>
+    </visual>
+  </link>
+
+</robot>

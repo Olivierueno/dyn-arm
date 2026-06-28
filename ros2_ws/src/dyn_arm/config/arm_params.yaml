@@ -1,0 +1,41 @@
+# All tunables for the arm live here. Edit this file, not the node code.
+# Per-joint arrays are ALWAYS in the order [gripper, wrist, elbow] (motor ids 1, 2, 3).
+
+arm_node:
+  ros__parameters:
+    device: /dev/ttyUSB0
+    baud: 57600
+
+    # --- motion profile (slow + smooth; raise for snappier) ---
+    profile_velocity: 120       # speed cap, units 0.229 rev/min (was 50; raise for faster travel)
+    profile_acceleration: 16    # accel ramp, units 214.6 rev/min^2 (lowered 25->16: gentler starts so the heavy elbow doesn't lurch)
+
+    # --- failsafe ---
+    watchdog_timeout: 1.5       # seconds with no target before easing to home
+
+    # --- virtual floor geometry (meters / ticks); see kinematics.py ---
+    elbow_axis_height: 0.04475  # elbow axis above the wood the gripper hits
+    link1: 0.140                # elbow axis -> wrist axis
+    link2: 0.192                # wrist axis -> nail tip (0.140 + 0.052)
+    floor_margin: 0.015         # tip must stay this far above the wood
+    zero_tick: 2048             # straight-up pose
+
+    # --- per-joint [gripper, wrist, elbow] ---
+    ids:          [1, 2, 3]
+    names:        ['gripper', 'wrist', 'elbow']
+    lo:           [1903, 456, 920]      # soft min ticks (measured + margin)
+    hi:           [2316, 3639, 3174]    # soft max ticks
+    home:         [2048, 2048, 2048]    # parked pose ticks
+    goal_current: [200, 300, 500]       # torque cap, units ~2.69 mA
+    p_gain:       [400, 800, 650]       # position stiffness (elbow softened 800->650 to reduce inertial overshoot)
+    d_gain:       [4500, 1200, 1700]    # position damping (elbow raised 1200->1700 to settle weight oscillation)
+    deadband:     [12, 8, 8]            # ticks of goal wobble to ignore at rest (rejects command noise / repeated heartbeats)
+
+# Hands-free choreography (poses live in demo_node.py). The demo sends one goal per
+# pose and the MOTOR PROFILE above (profile_velocity / profile_acceleration) does the
+# smoothing - so motion speed is tuned there, not here. Only the pose timing lives here.
+demo:
+  ros__parameters:
+    step_period: 2.0    # seconds per pose: the motor profiles there, then holds the remainder
+    heartbeat: 5.0      # Hz to re-send the held target so the watchdog stays fed (unchanged target = no motor write)
+    loop: true          # repeat forever, or false to run once and hold the last pose
